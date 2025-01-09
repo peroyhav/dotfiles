@@ -8,7 +8,7 @@ fi
 
 disk=""
 final_pass=""
-random_passes=1
+random_passes=3
 args=("$@")
 argc=${#args[@]}
 
@@ -96,28 +96,23 @@ bytes_to_human() {
 hrb=$(bytes_to_human "$total_bytes")
 echo "This will write a total of $hrb over $total_passes passes"
 
-echo "Pass 1: writing 0x00 to the entire disk."
-pv -tpreb -s "$device_size" -N "Pass 1" --sync /dev/zero | dd of="$disk" bs="$block_size" oflag=direct status=none conv=fsync 2>/dev/null
+pv -tpreb -s "$device_size" -N "Pass 1 zeroes" --sync /dev/zero | dd of="$disk" bs="$block_size" oflag=direct status=none conv=fsync 2>/dev/null
 
 pass=2
 for ((i=1; i<= random_passes;i++));do
-    echo "Pass $pass: writing random data to the disk."
-    pv -tpreb -s "$device_size" -N "Pass $pass" --sync /dev/urandom | dd of="$disk" bs="$block_size" oflag=direct status=none conv=fsync 2>/dev/null
+    pv -tpreb -s "$device_size" -N "Pass $pass random" --sync /dev/urandom | dd of="$disk" bs="$block_size" oflag=direct status=none conv=fsync 2>/dev/null
     ((pass++))
 done
 
-echo "Pass $pass: writing 0xff to the disk."
-pv -tpreb -s "$device_size" -N "Pass $pass" --sync /dev/zero | tr '\0' '\377' | dd of="$disk" bs="$block_size" oflag=direct status=none conv=fsync 2>/dev/null
+pv -tpreb -s "$device_size" -N "Pass $pass ones" --sync /dev/zero | tr '\0' '\377' | dd of="$disk" bs="$block_size" oflag=direct status=none conv=fsync 2>/dev/null
 ((pass++))
 
 if [[ "$final_pass" == "z" ]];then
-    echo "Pass $pass: writing 0x00 to the entire disk."
-    pv -tpreb -s "$device_size" -N "Pass $pass" --sync /dev/zero | dd of="$disk" bs="$block_size" oflag=direct status=none conv=fsync 2>/dev/null
+    pv -tpreb -s "$device_size" -N "Pass $pass zeroes" --sync /dev/zero | dd of="$disk" bs="$block_size" oflag=direct status=none conv=fsync 2>/dev/null
 fi
 
 if [[ "$final_pass" == "r" ]];then
-    echo "Pass $pass: writing random data to the entire disk."
-    pv -tpreb -s "$device_size" -N "Pass $pass" --sync /dev/urandom | dd of="$disk" bs="$block_size" oflag=direct status=none conv=fsync 2>/dev/null
+    pv -tpreb -s "$device_size" -N "Pass $pass random" --sync /dev/urandom | dd of="$disk" bs="$block_size" oflag=direct status=none conv=fsync 2>/dev/null
 fi
 
 echo "Erase $disk is now complete. "
